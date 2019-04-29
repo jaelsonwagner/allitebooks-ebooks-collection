@@ -3,8 +3,8 @@ source $(dirname "$0")/util.sh
 
 SCRIPT=$(portable_readlink "$0")
 SCRIPT_PATH=$(dirname "$SCRIPT")
-
 URL_ALL_IT_EBOOKS=http://www.allitebooks.com
+EBOOKS_LIBRARY_DIR="$(basename -s .sh $SCRIPT)/ebooks"
 TMP_DIR=$(mktemp -d --suffix=.ebooks-library-builder)
 TMP_EBOOK_LINKS_FILE_PATH="$TMP_DIR/ebook-file-links.txt"
 touch $TMP_EBOOK_LINKS_FILE_PATH
@@ -34,23 +34,24 @@ verify_mandatory_utitilies() {
 
 download_html_page() {
     local URL=$1
-    local TMP_HTML_PAGE_FILE_PATH=$(mktemp --tmpdir=$TMP_DIR --suffix=.page.html)
+    #local TMP_HTML_PAGE_FILE_PATH=$(mktemp --tmpdir=$TMP_DIR --suffix=.page.html)
+    local TMP_HTML_PAGE_FILE_PATH="$TMP_DIR/current-page.html"
 
-    echo "Saving html page $URL..." >&2
+    echo -n "Downloading html page $URL..." >&2
     wget -nv --show-progress --tries=3 --retry-connrefused -O "$TMP_HTML_PAGE_FILE_PATH" "$URL"
 
     echo $TMP_HTML_PAGE_FILE_PATH
 }
 
-download_ebooks() {
-    while read NEXT_LINK;
-    do
-        log_info "Downloading file $NEXT_LINK..."
-        local ORIGINAL_FILE_NAME=`echo $NEXT_LINK | grep -oP '([^\/]*)$'`
-        local ENCODE_URL_FILE=${NEXT_LINK//" "/"%20"}
-        wget -nv --show-progress --tries=3 --retry-connrefused -O "$TMP_DIR/$ORIGINAL_FILE_NAME" "$ENCODE_URL_FILE"
-    done < "$1"
-}
+# download_ebooks() {
+#     while read NEXT_LINK;
+#     do
+#         log_info "Downloading file $NEXT_LINK..."
+#         local ORIGINAL_FILE_NAME=`echo $NEXT_LINK | grep -oP '([^\/]*)$'`
+#         local ENCODE_URL_FILE=${NEXT_LINK//" "/"%20"}
+#         wget -nv --show-progress --tries=3 --retry-connrefused -O "$TMP_DIR/$ORIGINAL_FILE_NAME" "$ENCODE_URL_FILE"
+#     done < "$1"
+# }
 
 validate_input_argument $1
 verify_mandatory_utitilies
@@ -59,6 +60,8 @@ URL_CHOOSEN_CATEGORY_PAGE="$URL_ALL_IT_EBOOKS/$CATEGORY_NAME"
 DOWNLOADED_HTML_PAGE_FILE_PATH=$(download_html_page $URL_CHOOSEN_CATEGORY_PAGE)
 
 PAGES_COUNT=`cat $DOWNLOADED_HTML_PAGE_FILE_PATH | grep -oP '1 / \d+' | grep -oP '\d+$'`
+# PAGES_COUNT=2
+
 log_info "There are $PAGES_COUNT pages for category: $CATEGORY_NAME."
 
 for PAGE_NUMBER in `seq 1 $PAGES_COUNT`
@@ -83,12 +86,16 @@ do
     done
 done
 
-# while read NEXT_LINK;
-# do
-#     log_info "Downloading file $NEXT_LINK..."
-#     ORIGINAL_FILE_NAME=`echo $NEXT_LINK | grep -oP '([^\/]*)$'`
-#     ENCODE_URL_FILE=${NEXT_LINK//" "/"%20"}
-#     wget -nv --show-progress --tries=3 --retry-connrefused -O "$TMP_DIR/$ORIGINAL_FILE_NAME" "$ENCODE_URL_FILE"
-# done < $TMP_EBOOK_LINKS_FILE_PATH
+[[ -d "$EBOOKS_LIBRARY_DIR/$CATEGORY_NAME" ]]; mkdir -p "$EBOOKS_LIBRARY_DIR/$CATEGORY_NAME"
 
-# rm -r /tmp/*.ebooks-library-builder
+while read NEXT_LINK;
+do
+    log_info "Downloading file $NEXT_LINK..."
+    
+    ORIGINAL_FILE_NAME=`echo $NEXT_LINK | grep -oP '([^\/]*)$'`    
+    ENCODE_URL_FILE=${NEXT_LINK//" "/"%20"}
+
+    wget -nv --show-progress --tries=3 --retry-connrefused -O "$EBOOKS_LIBRARY_DIR/$CATEGORY_NAME/$ORIGINAL_FILE_NAME" "$ENCODE_URL_FILE"
+done < $TMP_EBOOK_LINKS_FILE_PATH
+
+rm -r "$TMP_DIR"
