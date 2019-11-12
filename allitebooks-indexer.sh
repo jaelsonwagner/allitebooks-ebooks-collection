@@ -93,7 +93,7 @@ check_mandatory_utility_tools() {
     if [[ -z $WGET_PATH ]];
     then
         { 
-            log_error "Missing wget utility. Please, make sure that wget is installed!"; 
+            log_error "Missing wget utility. Please, make sure that wget is installed and accessible!"; 
             exit 1; 
         }
     fi
