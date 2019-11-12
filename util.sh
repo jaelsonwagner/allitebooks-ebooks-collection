@@ -40,3 +40,9 @@ log_info() {
     local message=$1
     echo -e "\033[96m$message\033[0m";
 }
+
+log_debug() {
+    [[ -z $1 ]] && { echo "Missing 'message' argument. Usage: log_debug $0 <file-path>"; exit 1; }
+    local message="$1"
+    echo -e "debug: \033[32m$message\033[0m";
+}

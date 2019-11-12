@@ -7,7 +7,7 @@ source $(dirname "$0")/util.sh
 
 DEBUG_MODE=true # only for debugging purposes. =========================================================================
 
-debug() { [[ ! -z $DEBUG_MODE && $DEBUG_MODE == true ]] && { log_info "[DEBUG]: $1" ; } }
+debug() { [[ ! -z $DEBUG_MODE && $DEBUG_MODE == true ]] && { log_debug "$1" ; } }
 usage() { echo "Usage: $0 --category=<string> | --all" 1>&2; exit 1; } # TODO: improve usage method description.
 
 SCRIPT=$(portable_readlink "$0")
