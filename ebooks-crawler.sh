@@ -116,7 +116,7 @@ download_html_page() {
     #local TMP_HTML_PAGE_FILE_PATH=$(mktemp --tmpdir=$TMP_HTML_DIR --suffix=.$SUFFIX.html)
     local TMP_HTML_PAGE_FILE_PATH="$TMP_HTML_DIR/$SUFFIX.html"
 
-    echo -n "Downloading page $PAGE_URL..." >&2
+    # echo -n "Downloading page $PAGE_URL..." >&2
     
     wget -nv --show-progress --tries=3 --retry-connrefused -O "$TMP_HTML_PAGE_FILE_PATH" "$PAGE_URL"
 
@@ -156,15 +156,15 @@ download_single_file() {
 
     mkdir -p "$DEST_DIR"
 
-    log_info -n "Downloading file $FILE_URI..."
+    # log_info -n "Downloading file $FILE_URI..."
 
     OUTPUT_FILE=$(echo "$FILE_URI" | grep -oP '([^\/]*)$')
-    echo $OUTPUT_FILE
+    # echo $OUTPUT_FILE
 
     # Encoding space character from file link.
     ENCODE_URL_FILE=${FILE_URI//" "/"%20"}
 
-    wget -bnv --no-warc-keep-log --show-progress --tries=3 --retry-connrefused \
+    wget -bnv --show-progress --tries=3 --retry-connrefused -o /dev/null \
     -O "$DEST_DIR/$OUTPUT_FILE" \
     "$ENCODE_URL_FILE"
 }
@@ -173,25 +173,25 @@ check_mandatory_utility_tools
 
 CHOOSEN_PAGE_URL="$ALL_IT_EBOOKS_BASE_URL";
 [[ ! -z $EBOOKS_CATEGORY ]] && { CHOOSEN_PAGE_URL="$ALL_IT_EBOOKS_BASE_URL/$EBOOKS_CATEGORY"; }
-log_debug "CHOOSEN_PAGE_URL -> $CHOOSEN_PAGE_URL"
+# log_debug "CHOOSEN_PAGE_URL -> $CHOOSEN_PAGE_URL"
 
 DOWNLOADED_HTML_PAGE_FILE_PATH=$(download_html_page "$CHOOSEN_PAGE_URL")
-log_debug "DOWNLOADED_HTML_PAGE_FILE_PATH -> $DOWNLOADED_HTML_PAGE_FILE_PATH"
+# log_debug "DOWNLOADED_HTML_PAGE_FILE_PATH -> $DOWNLOADED_HTML_PAGE_FILE_PATH"
 
 PAGES_COUNT=`cat $DOWNLOADED_HTML_PAGE_FILE_PATH | grep -oP '1 / \d+' | grep -oP '\d+$'`
-log_debug "PAGES_COUNT -> $PAGES_COUNT"
-PAGES_COUNT=2 # Mock. Remove-me!
+# log_debug "PAGES_COUNT -> $PAGES_COUNT"
+# PAGES_COUNT=2 # Mock. Remove-me!
 
 if [[ ! -z $EBOOKS_CATEGORY ]];
 then 
     { 
-        log_info "$PAGES_COUNT pages in $EBOOKS_CATEGORY category will be processed.";
+        # log_info "$PAGES_COUNT pages in $EBOOKS_CATEGORY category will be processed.";
         # {variable,,} to lower case
         EBOOKS_CATALOG_FILE_PATH="$SCRIPT_PATH/${$EBOOKS_CATEGORY,,}-catalog.txt";
     }
 else
     {
-        log_info "$PAGES_COUNT pages will be processed.";
+        # log_info "$PAGES_COUNT pages will be processed.";
         EBOOKS_CATALOG_FILE_PATH="$SCRIPT_PATH/all-catalog.txt";
     }
 fi    
@@ -199,7 +199,7 @@ fi
 touch $EBOOKS_CATALOG_FILE_PATH
 cat /dev/null > $EBOOKS_CATALOG_FILE_PATH
 
-log_debug "$EBOOKS_CATALOG_FILE_PATH"
+# log_debug "EBOOKS_CATALOG_FILE_PATH -> $EBOOKS_CATALOG_FILE_PATH"
 
 if [[ $PAGES_COUNT -gt 0 ]];
     then 
@@ -210,23 +210,39 @@ if [[ $PAGES_COUNT -gt 0 ]];
                 DOWNLOADED_HTML_PAGE_FILE_PATH=$(download_html_page $NEXT_PAGE_TO_DOWNLOAD)
 
                 declare -a EBOOK_PAGES=()
-                EBOOK_PAGES=($(cat $DOWNLOADED_HTML_PAGE_FILE_PATH | grep -P '<h2 class="entry-title">' | grep -oP 'http:\/\/\S+\w'))
-                        
+                # EBOOK_PAGES=($(cat $DOWNLOADED_HTML_PAGE_FILE_PATH | grep -P '<h2 class="entry-title">' | grep -oP 'http:\/\/\S+\w'))
+                tmp=$(grep -P '<h2 class="entry-title">' $DOWNLOADED_HTML_PAGE_FILE_PATH | grep -oP 'http:\/\/\S+\w' | tr '\n' '|')
+                
+                log_error "$tmp"
+
+                declare -a ADDR=()
+                    IFS='|' # pipe (|) is set as delimiter
+                    read -ra ADDR <<< "$tmp" # str is read into an array as tokens separated by IFS
+                    for np in "${ADDR[@]}"; do # access each element of array
+                        # log_debug "Next URI: $next_uri"
+                        log_debug "$np"
+                        EBOOK_PAGES+=("$np")
+                        # download_single_file "$next_uri" "output"
+                    done
+                    IFS=' ' # reset to default value after usage
+
                 log_info "Found ${#EBOOK_PAGES[@]} titles in page number: $PAGE_NUMBER."
 
                 for NEXT_PAGE in "${EBOOK_PAGES[@]}"
                 do
-                    log_debug "NEXT_PAGE: $NEXT_PAGE"
+                    # log_debug "NEXT_PAGE: $NEXT_PAGE"
                     HTML_PAGE_FILE_PATH=$(download_html_page $NEXT_PAGE)
 
                     uri_files_str=$(grep -o 'http:\/\/file[^"]*' "$HTML_PAGE_FILE_PATH" | tr '\n' '|')
-                    log_debug "$uri_files_str"
+                    #log_debug "$uri_files_str"
                     
+                    ADDR=()
                     IFS='|' # pipe (|) is set as delimiter
                     read -ra ADDR <<< "$uri_files_str" # str is read into an array as tokens separated by IFS
                     for next_uri in "${ADDR[@]}"; do # access each element of array
-                        log_debug "Next URI: $next_uri"
-                        download_single_file "$next_uri" "output"
+                        # log_debug "Next URI: $next_uri"
+                        echo "$next_uri" >> "$EBOOKS_CATALOG_FILE_PATH"
+                        # download_single_file "$next_uri" "output"
                     done
                     IFS=' ' # reset to default value after usage
 
